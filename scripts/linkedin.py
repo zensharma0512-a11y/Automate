@@ -83,13 +83,17 @@ def api_error(status, body):
     sys.exit(f"LinkedIn API error {status}: {body}\n{hint}".rstrip())
 
 
-def person_urn(token):
-    if os.environ.get("LINKEDIN_PERSON_URN"):
-        return os.environ["LINKEDIN_PERSON_URN"]
+def userinfo(token):
     status, _, body = linkedin("GET", "https://api.linkedin.com/v2/userinfo", token)
     if status != 200:
         api_error(status, body)
-    return "urn:li:person:" + json.loads(body)["sub"]
+    return json.loads(body)
+
+
+def person_urn(token):
+    if os.environ.get("LINKEDIN_PERSON_URN"):
+        return os.environ["LINKEDIN_PERSON_URN"]
+    return "urn:li:person:" + userinfo(token)["sub"]
 
 
 def api_versions():
@@ -291,6 +295,8 @@ def main():
     if not token and not DRY_RUN:
         print("::warning::LINKEDIN_ACCESS_TOKEN is not set, so nothing was posted. See README.md for setup.")
         return
+    if token and DRY_RUN:  # a dry run doubles as a check that the token works, without posting
+        print(f"LinkedIn token works: connected as {userinfo(token).get('name', 'your account')}.")
     if command == "run":
         cmd_run(token)
     else:

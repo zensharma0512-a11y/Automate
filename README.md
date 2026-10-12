@@ -4,36 +4,26 @@ GitHub Actions that keep my [GitHub profile](https://github.com/zensharma0512-a1
 
 | Workflow | What it does | When |
 | --- | --- | --- |
-| **Update profile README** | Rewrites the *What I'm working on* and *Recent GitHub activity* sections of my profile README | Every 6 hours |
+| **Update README** (runs in the [profile repo](https://github.com/zensharma0512-a11y/zensharma0512-a11y/blob/main/.github/workflows/update-readme.yml)) | Rewrites the *What I'm working on* and *Recent GitHub activity* sections of my profile README using `scripts/update_readme.py` from this repo | Every 6 hours |
 | **LinkedIn autopilot** | Publishes posts from `linkedin/queue/` and drafts an announcement for every new public repo | Daily at 09:53 IST, and whenever a post is pushed to the queue |
 
 Everything is plain Python (standard library only), so there is nothing to install.
 
 > [!NOTE]
-> This repo is public, so anyone can read queued posts before they go out. Also, GitHub pauses scheduled workflows in a public repo after 60 days without any commits; it emails you first, and one click on **Actions** turns them back on. Making the repo private avoids both, and these jobs use only a small share of the free Actions minutes for private repos.
+> Keep this repo public: the profile README workflow downloads its script from here. That also means anyone can read queued posts before they go out. GitHub pauses scheduled workflows in a public repo after 60 days without any commits; it emails you first, and one click on **Actions** turns them back on.
 
-## Setup
+The profile README workflow lives in the profile repo, so it can push with that repo's built-in token and needs no setup. It fetches the updater script from this repo on every run. On its first run it added the two sections just above *Connect with me*. You can move them anywhere you like, as long as you keep the `<!-- PROJECTS:START -->`-style markers.
 
-### 1. Let the README workflow push to the profile repo
-
-1. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new):
-   - **Repository access:** Only select repositories → `zensharma0512-a11y`
-   - **Permissions → Repository permissions → Contents:** Read and write
-2. In this repo go to **Settings → Secrets and variables → Actions → New repository secret**, name it `PROFILE_REPO_TOKEN` and paste the token.
-3. Go to **Actions → Update profile README → Run workflow**.
-
-The first run adds the two sections just above *Connect with me* in the profile README. You can move them anywhere you like, as long as you keep the `<!-- PROJECTS:START -->`-style markers.
-
-### 2. Connect LinkedIn
+## Connect LinkedIn
 
 1. Create an app at <https://www.linkedin.com/developers/apps/new>. LinkedIn asks you to link a LinkedIn Page to the app; if you don't have one, create a simple page (for example, for your projects) first.
 2. On the app's **Products** tab, add **Share on LinkedIn** and **Sign In with LinkedIn using OpenID Connect**. Both are self-serve.
 3. Open the [OAuth token generator](https://www.linkedin.com/developers/tools/oauth/token-generator), pick your app, tick `openid`, `profile` and `w_member_social`, and sign in. If it complains about the redirect URL, add `https://www.linkedin.com/developers/tools/oauth/redirect` under the app's **Auth** tab and try again.
-4. Save the token as a repository secret named `LINKEDIN_ACCESS_TOKEN`.
-5. Check it works: **Actions → LinkedIn autopilot → Run workflow**, type a test message and tick **Dry run**.
+4. Save the token as a [repository secret](https://github.com/zensharma0512-a11y/Automate/settings/secrets/actions/new) named `LINKEDIN_ACCESS_TOKEN`.
+5. Check it works: **Actions → LinkedIn autopilot → Run workflow**, tick **Dry run** and run it. The log should say `LinkedIn token works: connected as <your name>`. Nothing is posted.
 
 > [!IMPORTANT]
-> LinkedIn tokens expire after **60 days**. When that happens, the workflow fails and says so (GitHub emails you). Repeat steps 3 and 4. Posts that come due in the meantime wait in the queue and go out on the next run after you update the token.
+> LinkedIn tokens expire after **60 days**. When that happens, the workflow fails and says so (GitHub emails you). Repeat steps 3 and 4 above. Posts that come due in the meantime wait in the queue and go out on the next run after you update the token.
 
 ## Writing posts
 
@@ -91,7 +81,7 @@ python3 scripts/update_readme.py path/to/README.md --dry-run
 DRY_RUN=1 python3 scripts/linkedin.py run
 ```
 
-Pull requests run both workflows in dry-run mode, so you can see what a change would do before merging it.
+Pull requests run the LinkedIn workflow in dry-run mode, so you can see what a change would do before merging it.
 
 ---
 
