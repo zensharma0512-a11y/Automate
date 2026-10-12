@@ -1,0 +1,62 @@
+name: LinkedIn autopilot
+
+on:
+  schedule:
+    - cron: "23 4 * * *" # 09:53 IST every day
+  push:
+    branches: [main]
+    paths:
+      - linkedin/queue/**
+  workflow_dispatch:
+    inputs:
+      text:
+        description: Post this to LinkedIn right now (leave empty to process the queue instead)
+        required: false
+      dry_run:
+        description: Dry run - show what would be posted without posting
+        type: boolean
+        default: false
+  pull_request:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  linkedin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run LinkedIn autopilot
+        run: python3 scripts/linkedin.py ${{ inputs.text && 'post' || 'run' }}
+        env:
+          POST_TEXT: ${{ inputs.text }}
+          DRY_RUN: ${{ (github.event_name == 'pull_request' || inputs.dry_run) && '1' || '' }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ vars.LINKEDIN_PERSON_URN }}
+          LINKEDIN_API_VERSION: ${{ vars.LINKEDIN_API_VERSION }}
+          TIMEZONE: ${{ vars.TIMEZONE }}
+          ANNOUNCE_DELAY_DAYS: ${{ vars.ANNOUNCE_DELAY_DAYS }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # Runs even if posting failed, so drafted posts and the list of known repos are never lost.
+      - name: Save queue changes
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+        run: |
+          git add linkedin
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "LinkedIn autopilot: update queue"
+          for attempt in 1 2 3; do
+            git pull --rebase && git push && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
